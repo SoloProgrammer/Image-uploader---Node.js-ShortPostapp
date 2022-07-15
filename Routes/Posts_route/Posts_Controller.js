@@ -155,34 +155,30 @@ router.get('/getlimited_Posts', async (req, res) => {
 // get posts of only that users to whom an they are follows.............................................. 
 
 
-// .................................. still working on it...
+router.get('/getPosts_of_folowing_users', fetchuser, async (req, res) => {
 
-// router.get('/getpostof_folowing_users',fetchuser,async(req,res) =>{
+    try {
+        const user = await User.findById(req.user.id);
 
-//     const Logged_in_user = await User.findOne({"_id":req.user.id});
+        let posts_of_folowing_users = []
 
-//     let posts;
-    
-//     let Posts_of_folowing_users = []
+        for (let i = 0; i < user.following.length; i++) {
 
-//     const func = async (userid) =>{
-//         posts = await Post.find({"author_id":userid});
+            const posts = await Post.find({ "author_id": user.following[i] })
 
-//         posts.forEach(post =>{
-//             Posts_of_folowing_users.push(post)
-//         })
-//     }
-//     let success = false
-    
-//     Logged_in_user.following.forEach((userid,index) => {
+            for (let ind = 0; ind < posts.length; ind++) {
+                posts_of_folowing_users.push(posts[ind])
+            }
+        }
 
-//         func(userid);
-//     })
+        res.status(200).json({ success: true, posts_of_folowing_users })
+    } catch (error) {
 
-//     res.json(Posts_of_folowing_users)
+        res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
+    }
 
-    
-// })
+
+})
 
 
 

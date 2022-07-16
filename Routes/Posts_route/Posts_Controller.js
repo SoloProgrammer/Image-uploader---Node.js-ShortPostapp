@@ -12,6 +12,7 @@ const fs = require('fs');
 
 const upload = require('../../middleware/multer_postImage_upload');
 
+
 // Adding new post of logged in user.......................................................................
 
 router.post('/AddPost', fetchuser, upload.single('postImage'), async (req, res) => {
@@ -179,8 +180,6 @@ router.get('/getPosts_of_folowing_users', fetchuser, async (req, res) => {
 
 
 })
-
-
 
 
 module.exports = router;

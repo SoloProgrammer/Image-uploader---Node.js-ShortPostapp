@@ -237,47 +237,140 @@ router.get('/getuserbyname', async (req, res) => {
 
 // Route to Follow and unfollow any User by logged in user..........................................
 
-router.put('/follow_unfollow_User/:touserid',fetchuser,async (req,res)=>{
+router.put('/follow_unfollow_User/:touserid', fetchuser, async (req, res) => {
 
-    const User_to_follow = await User.findById(req.params.touserid);
+    try {
 
-    const User_who_follow = await User.findById(req.user.id);
+        const User_to_follow = await User.findById(req.params.touserid);
 
-    if(!User_to_follow) return res.status(400).json({success:false,messsage:"User to follow not Exixts"});
+        const User_who_follow = await User.findById(req.user.id);
 
-    if(User_to_follow.followers.includes(req.user.id)){
+        if (!User_to_follow) return res.status(400).json({ success: false, messsage: "User to follow not Exixts" });
 
-        await User.updateOne({"_id":User_to_follow._id},{$pull:{followers:req.user.id}})
+        if (User_to_follow.followers.includes(req.user.id)) {
+
+            await User.updateOne({ "_id": User_to_follow._id }, { $pull: { followers: req.user.id } })
+        }
+        else {
+
+            await User.updateOne({ "_id": User_to_follow._id }, { $addToSet: { followers: req.user.id } })
+        }
+
+        if (User_who_follow.following.includes(req.params.touserid)) {
+
+            await User.updateOne({ "_id": User_who_follow._id }, { $pull: { following: req.params.touserid } })
+
+            res.status(200).json({ success: true, messsage: "Unfollowed..." })
+        }
+        else {
+
+            await User.updateOne({ "_id": User_who_follow._id }, { $addToSet: { following: req.params.touserid } })
+
+            res.status(200).json({ success: true, messsage: "Following..." })
+
+        }
+    } catch (error) {
+
+        res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
+
     }
-    else{
+})
 
-        await User.updateOne({"_id":User_to_follow._id},{$addToSet:{followers:req.user.id}})
+// below three routes are the steps for resetting user password.....................................
+
+router.post('/resetPass/Sendemail/:email', async (req, res) => {
+    let success = false;
+    const user = await User.findOne({ "email": req.params.email });
+
+    try {
+        if (!user) {
+            data = `<h3> We received an account recovery request on Blogg app for ${req.params.email}, but that email does not exist in our records </h3>
+            </br>
+            <h4>If you meant to sign up for blog app, you can <a href=${process.env.BASE_URL}signup> SignUp </a> here </h4> 
+            </br>
+            <p>If this password reset link is not send by you just ignore it, dont't worry your account is safe.`
+            await SendEmail(req.params.email, "Password Reset : Blogg app", data)
+            return res.json({ success, status: "sent", message: "Plz Check Your Email for further Processes" })
+        }
+        else {
+            const token = await new Token({
+                userId: user._id,
+                token: crypto.randomBytes(32).toString('hex')
+            }).save();
+
+            const url = `${process.env.BASE_URL}account/${user._id}/reset_password/${token.token}`;
+            data = `<h4> Click the link below and visit the password reset page to create new password</h4>
+            <br/>
+            <p> URL (🔑) - ${url}</p>
+            <br/>
+            <small>Dont't worry this process is safe at all 🔒</small>`
+
+            await SendEmail(req.params.email, "Password Reset : Blogg app", data)
+
+            return res.json({ success, status: "sent", message: "Plz Check Your Email for further Processes" })
+        }
+    } catch (error) {
+        res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
+
     }
-
-    if(User_who_follow.following.includes(req.params.touserid)){
-
-        await User.updateOne({"_id":User_who_follow._id},{$pull:{following:req.params.touserid}})
-
-        res.status(200).json({success:true,messsage:"Unfollowed..."})
-    }
-    else{
-
-        await User.updateOne({"_id":User_who_follow._id},{$addToSet:{following:req.params.touserid}})
-
-        res.status(200).json({success:true,messsage:"Following..."})
-
-    }
-    
 
 })
 
-//  Get post of users to whom the logged in users folow............................................
+router.get('/account/:userid/reset_password/:token', async (req, res) => {
+    try {
 
-// router.get('/getAllpostsofFollowing_users',fetchuser,async(req,res) =>{
-//     const 
-// })
+        const user = await User.findById(req.params.userid);
 
+        let success = false;
 
+        if (!user) return res.status(400).json({ success, "message": "Invald Link" });
+
+        const token = await Token.findOne({
+            userId: user._id,
+            token: req.params.token
+        })
+
+        if (!token) {
+            return res.status(400).json({ success, message: "Invalid Link1" })
+        }
+
+        res.status(200).json({ success: true, message: "Reset password here" })
+    } catch (error) {
+
+        res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
+
+    }
+})
+
+router.get('/:userid/change_password', async (req, res) => {
+
+    try {
+
+        const user = await User.findById(req.params.userid);
+
+        const { new_password } = req.body;
+
+        if(!new_password) return res.status(400).json({success:false,message:"Plz enter new password"})
+
+        const salt = await bcrypt.genSalt();
+
+        const hashed_pass = await bcrypt.hash(new_password, salt)
+
+        await User.findByIdAndUpdate(req.params.userid, { $set: { "password": hashed_pass } })
+
+        const token = await Token.findOne({userId: user._id});
+
+        await token.remove();
+
+        res.status(200).json({ success: true, message: "Your password has been resetted sucessfully,SignIn now !" })
+
+    } catch (error) {
+
+        res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
+
+    }
+
+})
 
 
 module.exports = router

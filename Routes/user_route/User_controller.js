@@ -344,13 +344,15 @@ router.get('/account/:userid/reset_password/:token', async (req, res) => {
 
 router.get('/:userid/change_password', async (req, res) => {
 
+    let success = false
+
     try {
 
         const user = await User.findById(req.params.userid);
 
         const { new_password } = req.body;
 
-        if(!new_password) return res.status(400).json({success:false,message:"Plz enter new password"})
+        if(!new_password) return res.status(400).json({success,message:"Plz enter new password"})
 
         const salt = await bcrypt.genSalt();
 
@@ -360,13 +362,15 @@ router.get('/:userid/change_password', async (req, res) => {
 
         const token = await Token.findOne({userId: user._id});
 
+        if(!token) return res.status(400).json({success,message:"token has Expired, plz visit the forget password page to regenerate the token"})
+
         await token.remove();
 
         res.status(200).json({ success: true, message: "Your password has been resetted sucessfully,SignIn now !" })
 
     } catch (error) {
 
-        res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
+        res.status(505).json({ success, message: "Internal server Error", error: error.message });
 
     }
 

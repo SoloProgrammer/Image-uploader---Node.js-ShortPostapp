@@ -51,7 +51,7 @@ router.post('/create_user', async (req, res) => {
             token: crypto.randomBytes(32).toString('hex')
         }).save();
 
-        const url = `${process.env.BASE_URL}users/${user._id}/verify/${token.token}`;
+        const url = `${process.env.BASE_URL}/users/${user._id}/verify/${token.token}`;
 
         await SendEmail(user.email, "Verify Email", url);
 
@@ -96,7 +96,7 @@ router.post('/auth_user', async (req, res) => {
                 }).save();
             }
 
-            const url = `${process.env.BASE_URL}users/${user._id}/verify/${token.token}`;
+            const url = `${process.env.BASE_URL}/users/${user._id}/verify/${token.token}`;
             await SendEmail(user.email, "Verify Email", url);
 
             return res.status(400).json({ success, status: "send", message: "Email Verification link is send to your Email plz verify" });
@@ -286,28 +286,36 @@ router.post('/resetPass/Sendemail/:email', async (req, res) => {
         if (!user) {
             data = `<h3> We received an account recovery request on Blogg app for ${req.params.email}, but that email does not exist in our records </h3>
             </br>
-            <h4>If you meant to sign up for blog app, you can <a href=${process.env.BASE_URL}signup> SignUp </a> here </h4> 
+            <h4>If you meant to sign up for blog app, you can <a href=${process.env.BASE_URL}/signup> SignUp </a> here </h4> 
             </br>
             <p>If this password reset link is not send by you just ignore it, dont't worry your account is safe.`
-            await SendEmail(req.params.email, "Password Reset : Blogg app", data)
-            return res.json({ success, status: "sent", message: "Plz Check Your Email for further Processes" })
+            const email = await SendEmail(req.params.email, "Password Reset : Blogg app", data)
+        
+            if(email.success) return res.json({ success, status: email.status, message: email.message })
+            if(!email.success) return res.json({ success, status: email.status, message: email.message  })
         }
         else {
+            
             const token = await new Token({
                 userId: user._id,
                 token: crypto.randomBytes(32).toString('hex')
             }).save();
-
-            const url = `${process.env.BASE_URL}account/${user._id}/reset_password/${token.token}`;
+            
+            const url = `${process.env.BASE_URL}/account/${user._id}/reset_password/${token.token}`;
             data = `<h4> Click the link below and visit the password reset page to create new password</h4>
             <br/>
             <p> URL (🔑) - ${url}</p>
             <br/>
             <small>Dont't worry this process is safe at all 🔒</small>`
+            
+            const email =  await SendEmail(req.params.email, "Password Reset : Blogg app", data)
+            
+            if(email.success) return res.json({ success, status: email.status, message: email.message })
+            if(!email.success) {
+                await token.remove();
+                return res.json({ success, status: email.status, message: email.message  });
+            }
 
-            await SendEmail(req.params.email, "Password Reset : Blogg app", data)
-
-            return res.json({ success, status: "sent", message: "Plz Check Your Email for further Processes" })
         }
     } catch (error) {
         res.status(505).json({ success: false, message: "Internal server Error", error: error.message });
@@ -331,7 +339,7 @@ router.get('/account/:userid/reset_password/:token', async (req, res) => {
         })
 
         if (!token) {
-            return res.status(400).json({ success, message: "Invalid Link1" })
+            return res.status(400).json({ success, message: "Invalid Link" })
         }
 
         res.status(200).json({ success: true, message: "Reset password here" })
@@ -350,6 +358,8 @@ router.get('/:userid/change_password', async (req, res) => {
 
         const user = await User.findById(req.params.userid);
 
+        const token = await Token.findOne({userId: user._id});
+
         const { new_password } = req.body;
 
         if(!new_password) return res.status(400).json({success,message:"Plz enter new password"})
@@ -359,10 +369,6 @@ router.get('/:userid/change_password', async (req, res) => {
         const hashed_pass = await bcrypt.hash(new_password, salt)
 
         await User.findByIdAndUpdate(req.params.userid, { $set: { "password": hashed_pass } })
-
-        const token = await Token.findOne({userId: user._id});
-
-        if(!token) return res.status(400).json({success,message:"token has Expired, plz visit the forget password page to regenerate the token"})
 
         await token.remove();
 

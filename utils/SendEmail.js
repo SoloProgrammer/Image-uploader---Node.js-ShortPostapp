@@ -1,3 +1,4 @@
+const { json } = require('body-parser');
 const nodemailer = require('nodemailer');
 
 const SendEmail = async (email,subject,data) =>{
@@ -20,10 +21,10 @@ const SendEmail = async (email,subject,data) =>{
             subject:subject,
             html:data,
         });
-        console.log("Email send Successfully")
+        return {success:true,status:"sent",message:"Email Sent Successfully,Plz Check Your Email for further Processes"}
     } catch (error) {
-        console.log("Email not send")
         console.log(error)
+        return {success:false,status:"not sent",message:"Email not Sent,due to may be some network issue"}
     }
 }
 module.exports = SendEmail;

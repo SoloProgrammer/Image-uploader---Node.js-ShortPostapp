@@ -21,7 +21,10 @@ const PostSchema = new Schema({
         required:true
     },
     likeArr:[Schema.Types.ObjectId],
-    dislikeArr:[Schema.Types.ObjectId]
+
+    dislikeArr:[Schema.Types.ObjectId],
+    
+    comments:[Object]
 },{
     timestamps:true
 })

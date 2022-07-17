@@ -291,7 +291,7 @@ router.post('/resetPass/Sendemail/:email', async (req, res) => {
             <p>If this password reset link is not send by you just ignore it, dont't worry your account is safe.`
             const email = await SendEmail(req.params.email, "Password Reset : Blogg app", data)
         
-            if(email.success) return res.json({ success, status: email.status, message: email.message })
+            if(email.success) return res.json({ success:true, status: email.status, message: email.message })
             if(!email.success) return res.json({ success, status: email.status, message: email.message  })
         }
         else {
@@ -310,7 +310,7 @@ router.post('/resetPass/Sendemail/:email', async (req, res) => {
             
             const email =  await SendEmail(req.params.email, "Password Reset : Blogg app", data)
             
-            if(email.success) return res.json({ success, status: email.status, message: email.message })
+            if(email.success) return res.json({ success:true, status: email.status, message: email.message })
             if(!email.success) {
                 await token.remove();
                 return res.json({ success, status: email.status, message: email.message  });

@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const UserSchema = new Schema({
     avatar:{
         type:String,
-        default:null
+        default:""
     },
     fname:{
         type:String,
@@ -17,7 +17,7 @@ const UserSchema = new Schema({
     },
     about:{
         type:String,
-        default:null
+        default:""
     },
     email:{
         type:String,

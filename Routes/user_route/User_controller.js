@@ -53,9 +53,9 @@ router.post('/create_user', async (req, res) => {
 
         const url = `${process.env.BASE_URL}/users/${user._id}/verify/${token.token}`;
 
-        await SendEmail(user.email, "Verify Email", url);
+        const email = await SendEmail(user.email, "Verify Email", url);
 
-        res.json({ success: false, status: "send", message: "Email Verification link is send to your Email plz verify", })
+        if(email.success) res.json({success: email.success, status: email.status, message: email.message })
 
     } catch (error) {
         res.json({ success: "Some error occured", "reason": error.message })
@@ -136,7 +136,7 @@ router.get('/:id/verify/:token', async (req, res) => {
 
 
         if (!token) {
-            return res.status(400).json({ success, message: "Invalid Link1" })
+            return res.status(400).json({ success, message: "Invalid Link" })
         }
 
         await User.updateOne({ _id: user._id, verified: true });
@@ -281,22 +281,28 @@ router.put('/follow_unfollow_User/:touserid', fetchuser, async (req, res) => {
 router.post('/resetPass/Sendemail/:email', async (req, res) => {
     let success = false;
     const user = await User.findOne({ "email": req.params.email });
-
+    
     try {
+        
+        
         if (!user) {
-            data = `<h3> We received an account recovery request on Blogg app for ${req.params.email}, but that email does not exist in our records </h3>
+            data = `<h3> We received an account recovery request on ShortPost app for ${req.params.email}, but that email does not exist in our records </h3>
             </br>
-            <h4>If you meant to sign up for blog app, you can <a href=${process.env.BASE_URL}/signup> SignUp </a> here </h4> 
+            <h4>If you meant to sign up for ShortPost app, you can <a href=${process.env.BASE_URL}/signup> SignUp </a> here </h4> 
             </br>
             <p>If this password reset link is not send by you just ignore it, dont't worry your account is safe.`
-            const email = await SendEmail(req.params.email, "Password Reset : Blogg app", data)
-        
-            if(email.success) return res.json({ success:true, status: email.status, message: email.message })
+            const email = await SendEmail(req.params.email, "Password Reset - ShortPost app", data)
+            
+            if(email.success) return res.json({ success:email.success, status: email.status, message: email.message })
             if(!email.success) return res.json({ success, status: email.status, message: email.message  })
         }
         else {
             
-            const token = await new Token({
+            let token = await Token.findOne({userId:user._id});  
+            
+            if(token) return res.status(400).json({success,status:"already sent",message:"password reset link already has been sent to your Email, plz check mailbox"})
+            
+            token = await new Token({
                 userId: user._id,
                 token: crypto.randomBytes(32).toString('hex')
             }).save();
@@ -308,7 +314,7 @@ router.post('/resetPass/Sendemail/:email', async (req, res) => {
             <br/>
             <small>Dont't worry this process is safe at all 🔒</small>`
             
-            const email =  await SendEmail(req.params.email, "Password Reset : Blogg app", data)
+            const email =  await SendEmail(req.params.email, "Password Reset : ShortPost app", data)
             
             if(email.success) return res.json({ success:true, status: email.status, message: email.message })
             if(!email.success) {
@@ -338,9 +344,7 @@ router.get('/account/:userid/reset_password/:token', async (req, res) => {
             token: req.params.token
         })
 
-        if (!token) {
-            return res.status(400).json({ success, message: "Invalid Link" })
-        }
+        if (!token)  return res.status(400).json({ success, message: "Invalid Link" });
 
         res.status(200).json({ success: true, message: "Reset password here" })
     } catch (error) {
